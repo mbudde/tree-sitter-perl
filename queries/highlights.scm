@@ -14,6 +14,7 @@
   "undef"
   "return"
   "map" "grep"
+  "async" "await"
 ] @keyword
 
 (phaser_statement phase: _ @keyword.phaser)
