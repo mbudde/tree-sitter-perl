@@ -1,14 +1,14 @@
 [
   "use" "no"
-  "package"
-  "sub"
+  "package" "class"
+  "sub" "method"
   "if" "elsif" "else" "unless"
   "while" "until"
   "for" "foreach"
   "try" "catch" "finally"
   "defer"
   "do"
-  "my" "our" "local"
+  "my" "our" "local" "field"
   "require"
   "last" "next" "redo" "goto"
   "undef"
@@ -66,9 +66,11 @@
 
 (use_statement (package) @type)
 (package_statement (package) @type)
+(class_statement (package) @type)
 (require_expression (bareword) @type)
 
 (subroutine_declaration_statement name: (_) @function)
+(method_declaration_statement name: (_) @function)
 (attribute_name) @decorator
 (attribute_value) @string
 

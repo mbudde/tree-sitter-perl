@@ -72,8 +72,8 @@ const optseq = (...terms) => optional(seq(...terms));
 const paren_list_of = rule => 
       seq('(', repeat(seq(optional(rule), ',')), optional(rule), ')')
 
-const GUARDED_KW = ($, kw) =>
-  seq(kw, $["_feature_" + kw]);
+const GUARDED_KW = ($, kw, featurename) =>
+  seq(kw, $["_feature_" + (featurename || kw)]);
 
 module.exports = grammar({
   name: 'perl',
@@ -129,6 +129,7 @@ module.exports = grammar({
     /* feature guards */
     $._feature_try,
     $._feature_defer,
+    $._feature_class,
     /* zero-width high priority token */
     $._NONASSOC,
     /* error condition must always be last; we don't use this in the grammar */
@@ -171,9 +172,11 @@ module.exports = grammar({
 
     _barestmt: $ => choice(
       $.package_statement,
+      $.class_statement,
       $.use_version_statement,
       $.use_statement,
       $.subroutine_declaration_statement,
+      $.method_declaration_statement,
       $.phaser_statement,
       $.conditional_statement,
       /* TODO: given/when/default */
@@ -189,6 +192,18 @@ module.exports = grammar({
     package_statement: $ => choice(
       seq('package', field('name', $.package), optional(field('version', $._version)), $._PERLY_SEMICOLON),
       seq('package', field('name', $.package), optional(field('version', $._version)), $.block),
+    ),
+    class_statement: $ => choice(
+      seq(GUARDED_KW($, 'class'),
+        field('name', $.package),
+        optional(field('version', $._version)), 
+        optseq(':', optional(field('attributes', $.attrlist))),
+        $._PERLY_SEMICOLON),
+      seq(GUARDED_KW($, 'class'),
+        field('name', $.package),
+        optional(field('version', $._version)),
+        optseq(':', optional(field('attributes', $.attrlist))),
+        $.block),
     ),
     use_version_statement: $ => seq(
       $._KW_USE,
@@ -208,6 +223,14 @@ module.exports = grammar({
 
     subroutine_declaration_statement: $ => seq(
       'sub',
+      field('name', $.bareword),
+      optseq(':', optional(field('attributes', $.attrlist))),
+      optional($.prototype_or_signature),
+      field('body', $.block),
+    ),
+
+    method_declaration_statement: $ => seq(
+      GUARDED_KW($, 'method', 'class'),
       field('name', $.bareword),
       optseq(':', optional(field('attributes', $.attrlist))),
       optional($.prototype_or_signature),
@@ -510,7 +533,7 @@ module.exports = grammar({
 
     variable_declaration: $ => prec.left(TERMPREC.QUESTION_MARK+1,
       seq(
-        choice('my', 'our'),
+        choice('my', 'our', GUARDED_KW($, 'field', 'class')),
         choice(
           field('variable', alias($._declare_scalar, $.scalar)),
           field('variable', alias($._declare_array, $.array)),
@@ -698,7 +721,7 @@ module.exports = grammar({
     _KW_FOR: $ => choice('for', 'foreach'),
     _LOOPEX: $ => choice('last', 'next', 'redo'),
 
-    _PHASE_NAME: $ => choice('BEGIN', 'INIT', 'CHECK', 'UNITCHECK', 'END'),
+    _PHASE_NAME: $ => choice('BEGIN', 'INIT', 'CHECK', 'UNITCHECK', 'END', GUARDED_KW($, 'ADJUST', 'class')),
 
     // Anything toke.c calls FUN0 or FUN0OP; the distinction does not matter to us
     _func0op: $ => choice(

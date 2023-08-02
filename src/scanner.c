@@ -55,6 +55,7 @@ enum TokenType {
   /* feature guards */
   TOKEN_FEATURE_TRY,
   TOKEN_FEATURE_DEFER,
+  TOKEN_FEATURE_CLASS,
   /* zero-width high priority token */
   TOKEN_NONASSOC,
   /* error condition is always last */
@@ -127,6 +128,8 @@ enum Features {
   FEATURE_TRY,
   /* present since 5.36 */
   FEATURE_DEFER,
+  /* present since 5.38 */
+  FEATURE_CLASS,
 };
 
 static bool lexerstate_is_feature_enabled(struct LexerState *state, enum Features feat)
@@ -152,6 +155,8 @@ static void lexerstate_enable_named_feature(struct LexerState *state, const char
     lexerstate_enable_feature(state, FEATURE_TRY);
   else if(len == 5 && strneq(name, "defer", 5))
     lexerstate_enable_feature(state, FEATURE_DEFER);
+  else if(len == 5 && strneq(name, "class", 5))
+    lexerstate_enable_feature(state, FEATURE_CLASS);
 }
 
 static void lexerstate_enable_feature_from_module(struct LexerState *state, const char *name, int len)
@@ -162,6 +167,8 @@ static void lexerstate_enable_feature_from_module(struct LexerState *state, cons
     feat = FEATURE_TRY;
   else if(len == 22 && strneq(name, "Feature::Compat::Defer", 22))
     feat = FEATURE_DEFER;
+  else if(len == 22 && strneq(name, "Feature::Compat::Class", 22))
+    feat = FEATURE_CLASS;
   /* TODO: Can insert more detection of 'use MODULE...' here to detect
    *   Object::Pad
    *   Syntax::Keyword::...
