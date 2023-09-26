@@ -60,16 +60,13 @@ binop.nonassoc = ($, op, term) =>
 // Using tree-sitter directly to make the high prec continuation token is
 // punishing (crashes your computer level), so it has to be manually
 // implemented in the scanner. See the sad saga at https://github.com/tree-sitter-perl/tree-sitter-perl/pull/47#issuecomment-1418270313
-binop.listassoc = (op, continue_token, term) =>
+binop.listassoc = (op, term) =>
   seq(
     field('arg', term),
     repeat1(seq(
-      continue_token,
       field('operator', op),
       field('arg', term),
-      optional(continue_token)
-    )),
-    ''
+    ))
   )
 
 /**
@@ -102,7 +99,7 @@ module.exports = grammar({
     $._LOOPEX,
     $._PHASE_NAME,
     $._HASH_PERCENT,
-    $._bareword
+    $._bareword,
   ],
   externals: $ => [
     /* ident-alikes */
@@ -349,11 +346,22 @@ module.exports = grammar({
     ),
 
     _term: $ => choice(
+      $._term_general,
+      $.equality_expression,
+      $.relational_expression,
+    ),
+    _term_general_plus_eq: $ => prec(TERMPREC.CHRELOP, choice(
+      $._term_general,
+      $.equality_expression,
+    )),
+    _term_general_plus_rel: $ => prec(TERMPREC.CHEQOP, choice(
+      $._term_general,
+      $.relational_expression,
+    )),
+    _term_general: $ => choice(
       $.readline_expression,
       $.assignment_expression,
       $.binary_expression,
-      $.equality_expression,
-      $.relational_expression,
       $.unary_expression,
       $.preinc_expression,
       $.postinc_expression,
@@ -462,17 +470,18 @@ module.exports = grammar({
     },
 
     // perl.y calls this `termeqop`
+    // TODO - retry by making versions of _term that don't include these
     equality_expression: $ =>
       choice(
-        prec(TERMPREC.CHEQOP, binop.listassoc(choice('==', '!=', 'eq', 'ne'), $._CHEQOP_continue, $._term)), // _CHEQOP
-        prec.right(TERMPREC.CHEQOP, binop.nonassoc($, choice('<=>', 'cmp', '~~'), $._term)), // _NCEQOP
+        prec(TERMPREC.CHEQOP, binop.listassoc(choice('==', '!=', 'eq', 'ne'), $._term_general_plus_rel)), // _CHEQOP
+        prec(TERMPREC.CHEQOP, binop(choice('<=>', 'cmp', '~~'), $._term_general_plus_rel)), // _NCEQOP
       ),
 
     // perly.y calls this `termrelop`
     relational_expression: $ =>
       choice(
-        prec(TERMPREC.CHRELOP, binop.listassoc(choice('<', '<=', '>=', '>', 'lt', 'le', 'ge', 'gt'), $._CHRELOP_continue, $._term)), // _CHRELOP
-        prec.right(TERMPREC.CHRELOP, binop.nonassoc($, 'isa', $._term)), // _NCRELOP
+        prec.right(TERMPREC.CHRELOP, binop.listassoc(choice('<', '<=', '>=', '>', 'lt', 'le', 'ge', 'gt'), $._term_general_plus_eq)), // _CHRELOP
+        prec(TERMPREC.CHRELOP, binop('isa', $._term_general_plus_eq)), // _NCRELOP
       )
       ,
 
